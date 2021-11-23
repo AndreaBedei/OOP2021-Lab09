@@ -1,7 +1,7 @@
-package it.unibo.oop.lab.reactivegui01;
-
+package it.unibo.oop.lab.reactivegui02;
 
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -13,41 +13,39 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-/**
- * This is a first example on how to realize a reactive GUI.
- */
-public final class ConcurrentGUI extends JFrame {
 
-    private static final long serialVersionUID = 1L;
+/**
+ * 
+ * @author andrea.bedei2
+ *
+ */
+
+public class ConcurrentGUI {
+    
+    private final JFrame frame = new JFrame("UP & DOWN");
+    private final JPanel canvas = new JPanel();
+    private final JButton JDown = new JButton("Down");
+    private final JButton JUp = new JButton("Up");
+    private final JButton JStop = new JButton("Stop");
+    private final JLabel JNum = new JLabel();
     private static final double WIDTH_PERC = 0.2;
     private static final double HEIGHT_PERC = 0.1;
-    private final JLabel display = new JLabel();
-    private final JButton stop = new JButton("stop");
-
-    /**
-     * Builds a new CGUI.
-     */
+    
     public ConcurrentGUI() {
-        super();
         final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        this.setSize((int) (screenSize.getWidth() * WIDTH_PERC), (int) (screenSize.getHeight() * HEIGHT_PERC));
-        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-        final JPanel panel = new JPanel();
-        panel.add(display);
-        panel.add(stop);
-        this.getContentPane().add(panel);
-        this.setVisible(true);
-        /*
-         * Create the counter agent and start it. This is actually not so good:
-         * thread management should be left to
-         * java.util.concurrent.ExecutorService
-         */
+        frame.setSize((int) (screenSize.getWidth() * WIDTH_PERC), (int) (screenSize.getHeight() * HEIGHT_PERC));
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        JNum.setText("0");
+        canvas.setLayout(new FlowLayout(FlowLayout.CENTER));
+        canvas.add(JNum);
+        canvas.add(JUp);
+        canvas.add(JDown);
+        canvas.add(JStop);
+        frame.getContentPane().add(canvas);
+        frame.setVisible(true);
         final Agent agent = new Agent();
-        new Thread(agent).start();
-        /*
-         * Register a listener that stops it
-         */
-        stop.addActionListener(new ActionListener() {
+        new Thread(agent).start();       
+        JStop.addActionListener(new ActionListener() {
             /**
              * event handler associated to action event on button stop.
              * 
@@ -60,12 +58,33 @@ public final class ConcurrentGUI extends JFrame {
                 agent.stopCounting();
             }
         });
+        JDown.addActionListener(new ActionListener() {
+            /**
+             * event handler associated to action event on button stop.
+             * 
+             * @param e
+             *            the action event that will be handled by this listener
+             */
+            @Override
+            public void actionPerformed(final ActionEvent e) {
+                // Agent should be final
+                agent.downCounting();
+            }
+        });
+        JUp.addActionListener(new ActionListener() {
+            /**
+             * event handler associated to action event on button stop.
+             * 
+             * @param e
+             *            the action event that will be handled by this listener
+             */
+            @Override
+            public void actionPerformed(final ActionEvent e) {
+                // Agent should be final
+                agent.upCounting();
+            }
+        });
     }
-
-    /*
-     * The counter agent is implemented as a nested class. This makes it
-     * invisible outside and encapsulated.
-     */
     private class Agent implements Runnable {
         /*
          * Stop is volatile to ensure visibility. Look at:
@@ -79,7 +98,7 @@ public final class ConcurrentGUI extends JFrame {
          */
         private volatile boolean stop;
         private volatile int counter;
-        
+        private volatile boolean flag = true;
 
         @Override
         public void run() {
@@ -93,7 +112,7 @@ public final class ConcurrentGUI extends JFrame {
                         @Override
                         public void run() {
                             // This will happen in the EDT: since i'm reading counter it needs to be volatile.
-                            ConcurrentGUI.this.display.setText(Integer.toString(Agent.this.counter));
+                            ConcurrentGUI.this.JNum.setText(Integer.toString(Agent.this.counter));
                         }
                     });
                     /*
@@ -104,7 +123,11 @@ public final class ConcurrentGUI extends JFrame {
                      * EXERCISE: Can you think of a solution that doesn't require counter to be volatile? (without
                      * using synchronized or locks)
                      */
-                    
+                    if (flag) {
+                        this.counter++;
+                    } else {
+                        this.counter--;
+                    }
                     Thread.sleep(100);
                 } catch (InvocationTargetException | InterruptedException ex) {
                     /*
@@ -121,6 +144,15 @@ public final class ConcurrentGUI extends JFrame {
          */
         public void stopCounting() {
             this.stop = true;
+            JDown.setEnabled(false);
+            JUp.setEnabled(false);
+            JStop.setEnabled(false);
+        }
+        public void downCounting() {
+            this.flag = false;
+        }
+        public void upCounting() {
+            this.flag = true;
         }
     }
 }
